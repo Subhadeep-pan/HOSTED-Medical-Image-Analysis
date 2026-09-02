@@ -6,9 +6,9 @@ name: CI
 # which means it never reaches Render's auto-deploy either.
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   build-and-smoke-test:
