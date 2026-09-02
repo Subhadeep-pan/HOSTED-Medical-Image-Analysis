@@ -1,0 +1,9 @@
+flask
+flask-cors
+ai-edge-litert
+numpy
+opencv-python-headless
+pillow
+python-dotenv
+requests
+gunicorn

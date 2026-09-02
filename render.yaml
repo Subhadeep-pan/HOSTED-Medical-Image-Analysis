@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: medical-image-analysis
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true # redeploy automatically on every push to the connected branch
+    envVars:
+      - key: FLASK_SECRET_KEY
+        generateValue: true # Render generates and stores a random secret for you
+      - key: FLASK_ENV
+        value: production
+      - key: GEMINI_API_KEY
+        sync: false # set manually in the Render dashboard (secret, not stored in git)
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash

@@ -1,0 +1,50 @@
+name: CI
+
+# Runs on every push and PR. This is the gate: if the Docker image doesn't
+# build or the app doesn't come up healthy, this fails and (if you turn on
+# branch protection in GitHub settings) bad code can't be merged to main —
+# which means it never reaches Render's auto-deploy either.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t medical-image-analysis:ci .
+
+      - name: Run container
+        run: |
+          docker run -d --name app-under-test \
+            -e FLASK_SECRET_KEY=ci-test-secret-key \
+            -e PORT=8080 \
+            -p 8080:8080 \
+            medical-image-analysis:ci
+
+      - name: Wait for app to become healthy
+        run: |
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:8080/health; then
+              echo "App is healthy"
+              exit 0
+            fi
+            echo "Waiting for app... ($i)"
+            sleep 2
+          done
+          echo "App never became healthy"
+          docker logs app-under-test
+          exit 1
+
+      - name: Show logs (always, for debugging)
+        if: always()
+        run: docker logs app-under-test || true
+
+      - name: Clean up
+        if: always()
+        run: docker rm -f app-under-test || true

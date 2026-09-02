@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediScan — Diagnostic Imaging Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-logo">
+        <span class="logo-mark"><i class="fas fa-stethoscope"></i></span> MediScan
+      </div>
+      <div class="nav-menu">
+        <a href="#analyze" class="nav-link active">Analyze</a>
+        <a href="#history" class="nav-link">History</a>
+        <a href="#statistics" class="nav-link">Statistics</a>
+        <button class="nav-btn" onclick="clearAllData()"><i class="fas fa-trash"></i> Clear data</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Header Section -->
+  <header class="hero-section">
+    <div class="hero-grid">
+      <div class="hero-content">
+        <p class="hero-kicker">Imaging analysis, three specialties</p>
+        <h1>Read a scan in seconds, not days.</h1>
+        <p class="hero-lede">Upload a brain MRI, lung CT, or skin lesion photo. MediScan classifies it, scores its own confidence, and has an AI assistant explain what the result means in plain language.</p>
+        <div class="hero-tags">
+          <span class="hero-tag"><i class="fas fa-brain"></i> Brain MRI</span>
+          <span class="hero-tag"><i class="fas fa-lungs"></i> Lung CT</span>
+          <span class="hero-tag"><i class="fas fa-magnifying-glass"></i> Skin Cancer</span>
+        </div>
+      </div>
+      <div class="hero-panel" aria-hidden="true">
+        <div class="scan-frame">
+          <div class="scan-line"></div>
+          <div class="scan-grid"></div>
+          <div class="scan-readout">
+            <span class="scan-readout-label">Confidence threshold</span>
+            <span class="scan-readout-value">75%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-container">
+    <!-- Statistics Section -->
+    <section id="statistics" class="stats-section">
+      <h2 class="section-title">Session statistics</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number" id="totalAnalysis">0</div>
+          <div class="stat-label">Total analyses</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="ctCount">0</div>
+          <div class="stat-label">Brain MRI</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="lungCount">0</div>
+          <div class="stat-label">Lung CT</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="skinCount">0</div>
+          <div class="stat-label">Skin lesion</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="avgTime">0s</div>
+          <div class="stat-label">Avg. analysis time</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Analysis Section -->
+    <section id="analyze" class="analysis-section">
+      <h2 class="section-title">Run an analysis</h2>
+
+      <div class="analysis-grid">
+
+        <!-- Brain MRI Card -->
+        <div class="analysis-card" id="ctCard">
+          <div class="card-header ct-header" onclick="selectType('ct')">
+            <i class="fas fa-brain"></i>
+            <h3>Brain MRI</h3>
+          </div>
+
+          <div class="patient-form hidden" id="ctForm">
+            <h4>Patient details</h4>
+            <input type="text" id="ctName" placeholder="Full name">
+            <input type="number" id="ctAge" placeholder="Age">
+            <select id="ctGender">
+              <option value="">Select gender</option>
+              <option>Male</option>
+              <option>Female</option>
+            </select>
+            <input type="text" id="ctPhone" placeholder="Phone">
+            <input type="text" id="ctAddress" placeholder="Address">
+            <button onclick="submitPatient('ct')" class="btn btn-secondary">Save details</button>
+          </div>
+
+          <div class="upload-area hidden" id="ctDropArea">
+            <input type="file" id="ctImage" class="file-input" accept="image/*">
+            <div class="upload-placeholder">
+              <i class="fas fa-cloud-arrow-up"></i>
+              <p>Drop an MRI image here</p>
+              <p class="small-text">or click to select a file</p>
+            </div>
+          </div>
+
+          <img id="ctPreview" class="preview-image">
+          <div id="ctLoader" class="loader hidden"></div>
+
+          <div id="ctContent" class="analysis-content hidden">
+            <div class="result-box">
+              <div class="result-header">
+                <h4>Analysis result</h4>
+                <span class="confidence-badge" id="ctConfidence"></span>
+              </div>
+              <div class="result-details">
+                <p><strong>Prediction</strong><span id="ctPrediction">-</span></p>
+                <p><strong>Confidence</strong><span id="ctConfidenceText">-</span></p>
+                <p><strong>Analyzed</strong><span id="ctTime">-</span></p>
+              </div>
+            </div>
+
+            <div class="ai-assistant-box" id="ctAssistantBox">
+  <div class="ai-assistant-header"><i class="fas fa-comment-medical"></i> AI health assistant</div>
+  <div class="ai-assistant-loading hidden" id="ctAssistantLoading">Reading the result…</div>
+
+  <div class="ai-assistant-sections hidden" id="ctAssistantSections">
+    <div class="ai-section" id="ctSection-overview"><h5>Overview</h5><p></p></div>
+    <div class="ai-section" id="ctSection-symptoms"><h5>Symptoms</h5><p></p></div>
+    <div class="ai-section" id="ctSection-causes"><h5>Causes</h5><p></p></div>
+    <div class="ai-section" id="ctSection-treatment"><h5>Primary treatment</h5><p></p></div>
+    <div class="ai-section" id="ctSection-when_to_see_doctor"><h5>When to see a doctor</h5><p></p></div>
+  </div>
+
+  <div class="ai-chat hidden" id="ctChat">
+    <div class="ai-chat-thread" id="ctChatThread"></div>
+    <div class="ai-chat-input-row">
+      <input type="text" id="ctChatInput" class="ai-chat-input" placeholder="Ask a follow-up question…">
+      <button class="btn btn-primary btn-small" onclick="sendAssistantMessage('ct')">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+            <div class="action-buttons">
+              <button class="btn btn-primary" onclick="downloadPDF('ct')"><i class="fas fa-file-pdf"></i> PDF report</button>
+              <button class="btn btn-secondary" onclick="downloadCSV('ct')"><i class="fas fa-file-csv"></i> Export CSV</button>
+              <button class="btn btn-danger" onclick="resetAnalysis('ct')"><i class="fas fa-rotate-left"></i> New analysis</button>
+            </div>
+          </div>
+
+          <button id="ctBtn" class="btn btn-analyze" onclick="uploadImage('ct')">Analyze now</button>
+        </div>
+
+        <!-- Lung Disease Card -->
+        <div class="analysis-card" id="lungCard">
+          <div class="card-header lung-header" onclick="selectType('lung')">
+            <i class="fas fa-lungs"></i>
+            <h3>Lung CT</h3>
+          </div>
+
+          <div class="patient-form hidden" id="lungForm">
+            <h4>Patient details</h4>
+            <input type="text" id="lungName" placeholder="Full name" required>
+            <input type="number" id="lungAge" placeholder="Age" required>
+            <select id="lungGender">
+              <option value="">Select gender</option>
+              <option>Male</option>
+              <option>Female</option>
+            </select>
+            <input type="text" id="lungPhone" placeholder="Phone number">
+            <input type="text" id="lungAddress" placeholder="Address">
+            <button class="btn btn-secondary" onclick="submitPatient('lung')">Save details</button>
+          </div>
+
+          <div class="upload-area hidden" id="lungDropArea">
+            <input type="file" id="lungImage" class="file-input" accept="image/*">
+            <div class="upload-placeholder">
+              <i class="fas fa-cloud-arrow-up"></i>
+              <p>Drop a lung CT image here</p>
+              <p class="small-text">or click to select a file</p>
+            </div>
+          </div>
+
+          <img id="lungPreview" class="preview-image">
+          <div id="lungLoader" class="loader hidden"></div>
+
+          <div id="lungContent" class="analysis-content hidden">
+            <div class="result-box">
+              <div class="result-header">
+                <h4>Analysis result</h4>
+                <span class="confidence-badge" id="lungConfidence"></span>
+              </div>
+              <div class="result-details">
+                <p><strong>Prediction</strong><span id="lungPrediction">-</span></p>
+                <p><strong>Confidence</strong><span id="lungConfidenceText">-</span></p>
+                <p><strong>Analyzed</strong><span id="lungTime">-</span></p>
+              </div>
+            </div>
+
+            <div class="ai-assistant-box" id="lungAssistantBox">
+              <div class="ai-assistant-header"><i class="fas fa-comment-medical"></i> AI health assistant</div>
+              <div class="ai-assistant-loading hidden" id="lungAssistantLoading">Reading the result…</div>
+
+              <div class="ai-assistant-sections hidden" id="lungAssistantSections">
+                <div class="ai-section" id="lungSection-overview"><h5>Overview</h5><p></p></div>
+                <div class="ai-section" id="lungSection-symptoms"><h5>Symptoms</h5><p></p></div>
+                <div class="ai-section" id="lungSection-causes"><h5>Causes</h5><p></p></div>
+                <div class="ai-section" id="lungSection-treatment"><h5>Primary treatment</h5><p></p></div>
+                <div class="ai-section" id="lungSection-when_to_see_doctor"><h5>When to see a doctor</h5><p></p></div>
+              </div>
+
+              <div class="ai-chat hidden" id="lungChat">
+                <div class="ai-chat-thread" id="lungChatThread"></div>
+                <div class="ai-chat-input-row">
+                  <input type="text" id="lungChatInput" class="ai-chat-input" placeholder="Ask a follow-up question…">
+                  <button class="btn btn-primary btn-small" onclick="sendAssistantMessage('lung')">
+                    <i class="fas fa-paper-plane"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="action-buttons">
+              <button class="btn btn-primary" onclick="downloadPDF('lung')"><i class="fas fa-file-pdf"></i> PDF report</button>
+              <button class="btn btn-secondary" onclick="downloadCSV('lung')"><i class="fas fa-file-csv"></i> Export CSV</button>
+              <button class="btn btn-danger" onclick="resetAnalysis('lung')"><i class="fas fa-rotate-left"></i> New analysis</button>
+            </div>
+          </div>
+
+          <button id="lungBtn" class="btn btn-analyze" onclick="uploadImage('lung')">Analyze now</button>
+        </div>
+
+        <!-- Skin Cancer Card -->
+        <div class="analysis-card" id="skinCard">
+          <div class="card-header skin-header" onclick="selectType('skin')">
+            <i class="fas fa-magnifying-glass"></i>
+            <h3>Skin lesion</h3>
+          </div>
+
+          <div class="patient-form hidden" id="skinForm">
+            <h4>Patient details</h4>
+            <input type="text" id="skinName" placeholder="Full name" required>
+            <input type="number" id="skinAge" placeholder="Age" required>
+            <select id="skinGender">
+              <option value="">Select gender</option>
+              <option>Male</option>
+              <option>Female</option>
+            </select>
+            <input type="text" id="skinPhone" placeholder="Phone number">
+            <input type="text" id="skinAddress" placeholder="Address">
+            <button class="btn btn-secondary" onclick="submitPatient('skin')">Save details</button>
+          </div>
+
+          <div class="upload-area hidden" id="skinDropArea">
+            <input type="file" id="skinImage" class="file-input" accept="image/*">
+            <div class="upload-placeholder">
+              <i class="fas fa-cloud-arrow-up"></i>
+              <p>Drop a lesion photo here</p>
+              <p class="small-text">or click to select a file</p>
+            </div>
+          </div>
+
+          <img id="skinPreview" class="preview-image">
+          <div id="skinLoader" class="loader hidden"></div>
+
+          <div id="skinContent" class="analysis-content hidden">
+            <div class="result-box">
+              <div class="result-header">
+                <h4>Analysis result</h4>
+                <span class="confidence-badge" id="skinConfidence"></span>
+              </div>
+              <div class="result-details">
+                <p><strong>Prediction</strong><span id="skinPrediction">-</span></p>
+                <p><strong>Confidence</strong><span id="skinConfidenceText">-</span></p>
+                <p><strong>Analyzed</strong><span id="skinTime">-</span></p>
+              </div>
+            </div>
+
+            <div class="ai-assistant-box" id="skinAssistantBox">
+              <div class="ai-assistant-header"><i class="fas fa-comment-medical"></i> AI health assistant</div>
+              <div class="ai-assistant-loading hidden" id="skinAssistantLoading">Reading the result…</div>
+
+              <div class="ai-assistant-sections hidden" id="skinAssistantSections">
+                <div class="ai-section" id="skinSection-overview"><h5>Overview</h5><p></p></div>
+                <div class="ai-section" id="skinSection-symptoms"><h5>Symptoms</h5><p></p></div>
+                <div class="ai-section" id="skinSection-causes"><h5>Causes</h5><p></p></div>
+                <div class="ai-section" id="skinSection-treatment"><h5>Primary treatment</h5><p></p></div>
+                <div class="ai-section" id="skinSection-when_to_see_doctor"><h5>When to see a doctor</h5><p></p></div>
+              </div>
+
+              <div class="ai-chat hidden" id="skinChat">
+                <div class="ai-chat-thread" id="skinChatThread"></div>
+                <div class="ai-chat-input-row">
+                  <input type="text" id="skinChatInput" class="ai-chat-input" placeholder="Ask a follow-up question…">
+                  <button class="btn btn-primary btn-small" onclick="sendAssistantMessage('skin')">
+                    <i class="fas fa-paper-plane"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="action-buttons">
+              <button class="btn btn-primary" onclick="downloadPDF('skin')"><i class="fas fa-file-pdf"></i> PDF report</button>
+              <button class="btn btn-secondary" onclick="downloadCSV('skin')"><i class="fas fa-file-csv"></i> Export CSV</button>
+              <button class="btn btn-danger" onclick="resetAnalysis('skin')"><i class="fas fa-rotate-left"></i> New analysis</button>
+            </div>
+          </div>
+
+          <button id="skinBtn" class="btn btn-analyze" onclick="uploadImage('skin')">Analyze now</button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- History Section -->
+    <section id="history" class="history-section">
+      <h2 class="section-title">Analysis history</h2>
+
+      <div class="history-controls">
+        <input type="text" id="searchInput" class="search-box" placeholder="Search history…">
+        <button class="btn btn-secondary" onclick="exportAllData()"><i class="fas fa-download"></i> Export all as CSV</button>
+      </div>
+
+      <div class="table-responsive">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Type</th>
+              <th>Name</th>
+              <th>Age</th>
+              <th>Prediction</th>
+              <th>Confidence</th>
+              <th>Date &amp; time</th>
+              <th>Duration</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody">
+            <tr class="empty-state">
+              <td colspan="9">No analysis performed yet. Start by analyzing an image above.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>MediScan — diagnostic imaging analysis.</p>
+    <p>For educational and diagnostic-support use only. Always consult a qualified medical professional before acting on a result.</p>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
